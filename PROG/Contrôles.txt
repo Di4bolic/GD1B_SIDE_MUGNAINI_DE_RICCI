@@ -1,0 +1,8 @@
+Clavier --> ZQSD , O pour le tir quand les 3 orbes jaunes ont été collectées
+Manette --> Joystick gauche , A pour le tir
+
+Entrée pour switcher entre manette et clavier
+
+Méduse font des dégâts ( trois vies )
+
+Prendre le gros orbe pour victoire

@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" /><title>Mon 1er jeu Phaser</title>
+    <script
+src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+    <style type="text/css"> body { margin: 0; }</style>
+</head>
+<body>
+<script type="text/javascript">
+
+    const sleep = (milliseconds) => {
+        return new Promise(resolve => setTimeout(resolve, milliseconds));
+    }
+
+    var config = {
+        type: Phaser.AUTO,
+        input:{gamepad:true},
+        width: 1920, height: 3240,
+        pixelArt: true,
+        physics: {
+            default: 'arcade',
+            arcade: {
+                debug: false
+            }},
+
+        scene: {preload: preload, create: create, update: update }
+    };
+new Phaser.Game(config);
+function preload(){
+    this.load.image('sky', 'assets/Background1.png');
+    this.load.image('ground', 'assets/platform.png');
+    this.load.image('star', 'assets/star.png');
+    this.load.image('bomb', 'assets/bomb.png');
+    this.load.image('meduse', 'assets/Meduse.png');
+    this.load.image('vie3', 'assets/Vie_3.png');
+    this.load.image('vie2', 'assets/Vie_2.png');
+    this.load.image('vie1', 'assets/Vie_1.png');
+    this.load.image('accueil', 'assets/Accueil.png');
+    this.load.image('vide', 'assets/vide.png');
+    this.load.image('perdu', 'assets/Perdu.png');
+    this.load.image('gagne', 'assets/Gagné.png');
+    this.load.image('turbine', 'assets/Turbine.png');
+    this.load.image('turbine_1', 'assets/Turbine_1.png');
+    this.load.image('objet', 'assets/objet.png');
+    //this.load.tilemapTiledJSON('map', 'assets/Collisions.json');
+    this.load.spritesheet('perso','assets/perso_2.png',
+        { frameWidth: 64, frameHeight: 32 });
+}
+var platforms;
+var player;
+var cursors;
+var stars;
+var score;
+var scoreText;
+var bombs;
+var gameOver;
+var doubleSaut;
+var clavier;
+var descelerationx;
+var descelerationy;
+var coule;
+var manette;
+var is_connected;
+var changement;
+var last_one;
+var ennemis;
+var vie;
+var invincible;
+var pause;
+var torpille;
+
+last_one = 'droite'
+var torpille = 0
+pause = true
+invincible = false;
+vie = 3;
+changement = false;
+is_connected = false;
+coule = 0;
+descelerationx = 0;
+descelerationy = 0;
+gameOver = false;
+score = 0;
+
+function create (){
+
+    // J'ai essayé de faire ma map sur tiled avec les collisiosn mais ça ne fonctionne pas
+
+    /*var map = this.make.tilemap({ key: 'map' });
+
+    // The first parameter is the name of the tileset in Tiled and the second parameter is the key
+    // of the tileset image used when loading the file in preload.
+    var tiles = map.addTilesetImage('collision', 'tiles');
+
+    // You can load a layer from the map using the layer name from Tiled, or by using the layer
+    // index (0 in this case).
+    var layer = map.createLayer(0, tiles, 0, 0);*/
+
+    this.add.image(960, 1620, 'sky');
+    health = this.add.image(80, 50, 'vie3').setScrollFactor(0);
+
+    player = this.physics.add.sprite(100, 100, 'perso');
+    player.setBounce(0.2);
+    player.setCollideWorldBounds(true);
+
+    this.anims.create({
+        key: 'left',
+        frames: this.anims.generateFrameNumbers('perso', {start:0,end:3}),
+        frameRate: 5,
+        repeat: -1
+    });
+
+    this.anims.create({
+        key: 'turn_left',
+        frames: [ { key: 'perso', frame: 4 } ],
+        frameRate: 20
+    });
+
+    this.anims.create({
+        key: 'turn_right',
+        frames: [ { key: 'perso', frame: 5 } ],
+        frameRate: 20
+    });
+    
+    this.anims.create({
+        key: 'right',
+        frames: this.anims.generateFrameNumbers('perso', {start:6,end:9}),
+        frameRate: 5,
+        repeat: -1
+    });
+
+    cursors = this.input.keyboard.createCursorKeys();
+    clavier = this.input.keyboard.addKeys('Z,Q,S,D,O,SPACE,ENTER');
+    
+    //affiche un texte à l’écran, pour le score
+
+    this.cameras.main.setSize(1280, 720);
+    this.cameras.main.startFollow(player);
+    //this.cameras.main.setZoom(1.5, 1.5);
+    this.cameras.main.setBounds(0, 0, 1920, 3240);
+
+    ennemis = this.physics.add.group();
+    this.physics.add.collider(player, ennemis, hitBomb, null, this);
+    var ennemi = ennemis.create(500, 1300, 'meduse');
+    var ennemi = ennemis.create(950, 1200, 'meduse');
+    var ennemi = ennemis.create(500, 500, 'meduse');
+    var ennemi = ennemis.create(800, 1900, 'meduse');
+    var ennemi = ennemis.create(1300, 1920, 'meduse');
+
+    stars = this.physics.add.group();
+    this.physics.add.overlap(player, stars, power, null, this);
+    var star = stars.create(1700, 900, 'star').setScale(0.5);
+    var star = stars.create(1800, 1220, 'star').setScale(0.5);
+    var star = stars.create(1590, 2325, 'star').setScale(0.5);
+
+    objets = this.physics.add.group();
+    this.physics.add.collider(player, objets, victoire, null, this);
+    var objet = objets.create(1720, 3060, 'objet').setScale(0.1);
+
+    
+
+    turbines = this.physics.add.group();
+    this.physics.add.collider(ennemis, turbines, kill, null, this);
+
+    accueil = this.add.image(640, 360, 'accueil')
+
+    function victoire(player, objet){
+        player.disableBody(true, true);
+        objet.disableBody(true, true);
+        health.setTexture('gagne');
+        health.setX(640)
+        health.setY(360)
+        gameOver = true;
+        this.physics.pause();
+    }
+
+    function kill(turbine, ennemi){
+        turbine.disableBody(true, true);
+        ennemi.disableBody(true, true);
+    }
+
+    function power(player, star){
+        star.disableBody(true, true)
+        torpille = torpille + 1
+    }
+
+    
+}
+
+function hitBomb(player, ennemi){
+    if (invincible != true){
+        invincible = true
+        player.setTint(101010);
+        ennemi.disableBody(true, true);
+        vie = vie - 1
+        sleep(1000).then(() => {
+            player.clearTint();
+            invincible = false
+        })
+    }
+}
+
+function update(){
+
+    if (pause != true){
+        if (gameOver){return;}
+
+        // Vie
+        if (vie == 2){
+            health.setTexture('vie2');
+        }
+        else if (vie == 1){
+            health.setTexture('vie1');
+        }
+        if (vie == 0){
+            health.setTexture('perdu');
+            health.setX(640)
+            health.setY(360)
+            player.disableBody(true, true)
+            gameOver = true;
+            this.physics.pause();
+        }
+
+        this.input.gamepad.once('connected', function (pad) {
+            manette = pad
+            is_connected = true
+        });
+
+        if (is_connected && changement){
+            // Tir
+            if (manette.A){
+                if (torpille == 3){
+                    if (last_one == 'droite'){
+                        xp = player.x;
+                        yp = player.y;
+                        var turbine = turbines.create(xp+45, yp+8, 'turbine');
+                        turbine.setAccelerationX(200);
+                        turbine.setAccelerationY(20);
+                    }
+                    else{
+                        xp = player.x;
+                        yp = player.y;
+                        var turbine = turbines.create(xp-45, yp+8, 'turbine_1');
+                        turbine.setAccelerationX(-200);
+                        turbine.setAccelerationY(20);
+                    }
+                }
+            }
+            // Partie verticale
+            if (manette.leftStick.y != 0){
+                player.setAccelerationY(-200*(-manette.leftStick.y));
+                if (player.body.velocity.y < -250){
+                    player.setVelocityY(-250);
+                }
+                else if (player.body.velocity.y > 250){
+                    player.setVelocityY(250);
+                }
+                descelerationy = player.body.velocity.y;
+                coule = 0;
+            }
+            else{ // sinon
+                if (descelerationy >= 0){
+                    descelerationy = descelerationy - 3;
+                } 
+                else if (descelerationy < 0){
+                    descelerationy = descelerationy + 3;
+                }
+                if (coule < 150){
+                    coule = coule + 1;
+                }
+                player.setVelocityY(descelerationy+coule);
+            }
+            // Partie horizontale
+            if (manette.leftStick.x < 0){
+                player.setAccelerationX(-200*(-manette.leftStick.x));
+                last_one = 'gauche'
+                if (player.body.velocity.x < -250){
+                    player.setVelocityX(-250);
+                }
+                descelerationx = player.body.velocity.x
+                player.anims.play('left', true); //et animation => gauche
+            }
+            else if (manette.leftStick.x > 0){
+                player.setAccelerationX(-200*(-manette.leftStick.x));
+                last_one = 'droite'
+                if (player.body.velocity.x < -250){
+                    player.setVelocityX(-250);
+                }
+                descelerationx = player.body.velocity.x
+                player.anims.play('right', true); //et animation => gauche
+            }
+            else{ // sinon
+                if (descelerationx > 0){
+                    descelerationx = descelerationx - 4;
+                } 
+                else if (descelerationx < 0){
+                    descelerationx = descelerationx + 4;
+                }
+                player.setVelocityX(descelerationx);
+                if (last_one == 'gauche'){
+                    player.anims.play('turn_left'); //animation fait face caméra
+                }
+                else{
+                    player.anims.play('turn_right'); //animation fait face caméra
+                }
+                
+            }
+        }
+        else if(changement == false){
+            // Tir
+            if (this.input.keyboard.checkDown(clavier.O, 1000)){
+                if (torpille == 3){
+                    if (last_one == 'droite'){
+                        xp = player.x;
+                        yp = player.y;
+                        var turbine = turbines.create(xp+45, yp+8, 'turbine');
+                        turbine.setAccelerationX(200);
+                        turbine.setAccelerationY(20);
+                    }
+                    else{
+                        xp = player.x;
+                        yp = player.y;
+                        var turbine = turbines.create(xp-45, yp+8, 'turbine_1');
+                        turbine.setAccelerationX(-200);
+                        turbine.setAccelerationY(20);
+                    }
+                }
+            }
+            // Partie horizontale
+            if (clavier.Q.isDown){ //si la touche gauche est appuyée
+                player.setAccelerationX(-200);
+                last_one = 'gauche'
+                if (player.body.velocity.x < -250){
+                    player.setVelocityX(-250);
+                }
+                descelerationx = player.body.velocity.x
+                player.anims.play('left', true); //et animation => gauche
+            }
+            else if (clavier.D.isDown){ //sinon si la touche droite est appuyée
+                player.setAccelerationX(200);
+                last_one = 'droite'
+                if (player.body.velocity.x > 250){
+                    player.setVelocityX(250);
+                }
+                descelerationx = player.body.velocity.x;
+                player.anims.play('right', true); //et animation => droite
+            }
+            else{ // sinon
+                if (descelerationx > 0){
+                    descelerationx = descelerationx - 4;
+                } 
+                else if (descelerationx < 0){
+                    descelerationx = descelerationx + 4;
+                }
+                player.setVelocityX(descelerationx);
+                if (last_one == 'gauche'){
+                    player.anims.play('turn_left'); //animation fait face caméra
+                }
+                else{
+                    player.anims.play('turn_right'); //animation fait face caméra
+                }
+            }
+
+            // Partie verticale
+            if (clavier.Z.isDown){ //si la touche gauche est appuyée
+                player.setAccelerationY(-200);
+                if (player.body.velocity.y < -250){
+                    player.setVelocityY(-250);
+                }
+                descelerationy = player.body.velocity.y;
+                coule = 0
+            }
+            else if (clavier.S.isDown){ //sinon si la touche droite est appuyée
+                player.setAccelerationY(200);
+                if (player.body.velocity.y > 250){
+                    player.setVelocityY(250);
+                }
+                descelerationy = player.body.velocity.y;
+                coule = 0
+            }
+            else{ // sinon
+                if (descelerationy >= 0){
+                    descelerationy = descelerationy - 3;
+                } 
+                else if (descelerationy < 0){
+                    descelerationy = descelerationy + 3;
+                }
+                if (coule < 150){
+                    coule = coule + 1;
+                }
+                player.setVelocityY(descelerationy+coule);
+            }
+
+        }
+
+        if (player.body.touching.down){
+            coule = 0
+        }
+
+        if (this.input.keyboard.checkDown(clavier.ENTER, 999999)){
+            if (changement){
+                changement = false
+            }
+            else{
+                if (is_connected){
+                    changement = true
+                }
+            }
+        }
+    }
+    else{
+        if (this.input.keyboard.checkDown(clavier.ENTER, 999999)){
+            accueil.setTexture('vide')
+            pause = false
+        }
+    }
+    
+}
+</script>
+</body>
+</html>
